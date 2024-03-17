@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            position: relative; /* Needed for absolute positioning of the child */
+        }
+
+        .container {
+            position: absolute; /* Positioning the menu icon */
+            right: 10px; /* Distance from the right */
+            cursor: pointer;
+        }
+
+        .bar1, .bar2, .bar3 {
+            width: 35px;
+            height: 5px;
+            background-color: #fff;
+            margin: 6px 0;
+            transition: 0.4s;
+        }
+
+        .change .bar1 {
+            transform: rotate(-45deg) translate(-9px, 6px);
+        }
+
+        .change .bar2 { opacity: 0; }
+
+        .change .bar3 {
+            transform: rotate(45deg) translate(-8px, -8px);
+        }
+
+        .menu-content {
+            display: none;
+            color: #333;
+            padding: 20px;
+            position: absolute;
+            top: 90px;
+            background-color: silver;
+            width: 30%;
+            right: 0; 
+            height: 100%;/* Aligns the content to the right */
+        }
+
+        .close-btn {
+            cursor: pointer;
+            position: absolute;
+            top: 5px;
+            right: 20px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        select {
+            font-size: 18px;
+            padding: 15px 20px;
+            width: calc(100% - 40px); /* Adjust based on padding */
+            margin: 10px 0;
+            display: block;
+            border: none;
+            border-radius: 25px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        h1 {
+            margin: 0; /* Remove default margin */
+        }
+
+        .button {
+            background-color: white; 
+            color: black; 
+            border: 2px solid #04AA6D;
+            padding: 16px 32px;
+            text-align: right;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            transition-duration: 0.4s;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: #04AA6D;
+            color: white;
+        }
+
+        #map-container {
+            width: 100%;
+            height: 600px; /* Set the initial height of the map */
+        }
+
+        #summary-table {
+            margin-top: 20px;
+        }
+
+        #summary-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #summary-table th,
+        #summary-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #summary-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ title }}</h1>
+        <div class="container" onclick="toggleMenu(this)">
+            <div class="bar1"></div>
+            <div class="bar2"></div>
+            <div class="bar3"></div>
+        </div>
+    </div>
+
+     <div id="hidden-content" class="menu-content">
+        <span class="close-btn" onclick="closeMenu()">&times;</span>
+        Select Device ID:
+        <br>
+        <!-- Device ID dropdown and Update button -->
+  <form method="post" action="/dashboard">
+    <label for="device_id">Select Device ID:</label>
+    <select name="device_id" id="device_id">
+        <option value="non">None</option>
+        {% for device_id in unique_device_ids %}
+            <option value="{{ device_id }}">{{ device_id }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Update</button>
+</form>
+
+        <!-- Summary table -->
+        <div id="summary-table">
+            <h2>Summary</h2>
+            <!-- Summary table -->
+            <div id="summary-table">
+                <h2>Summary</h2>
+                <table>
+                    <tr>
+                        <td>Total Distance Travelled:</td>
+                        <td>{{ summary['TotalDistance Travelled'] }}</td>
+                    </tr>
+                    <tr>
+                        <td>Average Engine Coolant Temp:</td>
+                        <td>{{ summary['AverageEngineCoolantTemp'] }}</td>
+                    </tr>
+                    
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <input type="hidden" id="filtered_data_head" value="{{ filtered_data_head|tojson|safe }}">
+<div id="map-container">
+    {% if map_content %}
+        {{ map_content|safe }}
+    {% else %}
+        <p>No map content available</p>
+    {% endif %}
+</div>
+<style>
+    /* Add this style to adjust the map container */
+    #map-container {
+        width: 70%; /* Reduce the width */
+        height: 800px; /* Increase the height */
+        margin: 0 200; /* Center the map horizontally */
+    }
+</style>
+
+   
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        function toggleMenu(x) {
+            x.classList.toggle("change");
+            var content = document.getElementById("hidden-content");
+            content.style.display = content.style.display === "block" ? "none" : "block";
+        }
+
+        function closeMenu() {
+            var content = document.getElementById("hidden-content");
+            content.style.display = "none";
+            document.querySelector('.container').classList.remove('change');
+        }
+        function viewDevice() {
+            var deviceModel = document.getElementById("deviceInput").value;
+            fetch('/view_device', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'device_id=' + deviceModel
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Filtered data saved successfully!');
+                } else {
+                    console.error('Error occurred while saving filtered data!');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Initialize the map
+
+        
+        // Sample marker (replace with your filtered data markers)
+        var marker = L.marker([51.5, -0.09]).addTo(map); // Example marker
+        marker.bindPopup("<b>Hello world!</b><br>This is a sample popup.").openPopup(); // Example popup
+ function updateSummary(filteredData) {
+    // Send a POST request to the /summarize route
+    fetch('/summarize', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ filtered_data: filteredData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Handle the summary data
+        console.log(data); // Log the summary data to the console
+        // Now you can update your HTML elements with the summary data
+        // For example, update a <div> with id="summary-table" with the summary data
+        document.getElementById('summary').innerHTML = `
+            <p>Total Distance Travelled: ${data['TotalDistance Travelled']}</p>
+            <p>Average Engine Coolant Temp: ${data['AverageEngineCoolantTemp']}</p>
+            
+        `;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+    </script>
+</body>
+</html>
